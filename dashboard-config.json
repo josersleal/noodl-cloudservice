@@ -1,0 +1,16 @@
+{
+  "apps": [
+    {
+      "serverURL": "http://localhost:3000",
+      "appId": "nutrisniff_dev",
+      "masterKey": "master_key_secure_123",
+      "appName": "NutriSniff"
+    }
+  ],
+  "users": [
+    {
+      "user": "admin",
+      "pass": "password123"
+    }
+  ]
+}

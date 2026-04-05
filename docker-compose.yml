@@ -1,36 +1,58 @@
-version: '3'
-
 services:
+  # 1. Database
   mongodb:
-    restart: unless-stopped
     image: mongo:latest
-    container_name: noodlapp-mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/noodlapp-db
+    container_name: nutrisniff-mongodb
+    restart: always
     environment:
-      MONGO_INITDB_ROOT_USERNAME: yourusername
-      MONGO_INITDB_ROOT_PASSWORD: yourpassword
-      MONGO_INITDB_DATABASE: noodlapp
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password123
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - nutrisniff-network
 
+  # 2. Parse Server (The Engine)
   cloudservice:
-    restart: unless-stopped
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: cloudservice
+    container_name: nutrisniff-backend
+    restart: always
+    depends_on:
+      - mongodb
     environment:
-      NODE_ENV: production
-      PORT: 3000
-      MASTER_KEY: mymasterkey
-      APP_ID: myappid
-      DATABASE_URI: mongodb://yourusername:yourpassword@mongodb:27017/noodlapp?authSource=admin
-      PUBLIC_SERVER_URL: http://localhost:3000
+      - PORT=3000
+      - APP_ID=nutrisniff_dev
+      - MASTER_KEY=master_key_secure_123
+      # Use the internal Docker name for the DB connection
+      - DATABASE_URI=mongodb://admin:password123@nutrisniff-mongodb:27017/noodl?authSource=admin
+      # Explicitly set the mount path
+      - PARSE_MOUNT=/parse
+      # Enable health check
+      - PARSE_SERVER_ALLOW_PUBLIC_HEALTH_CHECK=true
     ports:
       - "3000:3000"
-    links:
-      - mongodb
+    networks:
+      - nutrisniff-network
+
+  # 3. Parse Dashboard
+  parse-dashboard:
+    image: parseplatform/parse-dashboard
+    container_name: nutrisniff-dashboard
+    restart: always
+    environment:
+      - PARSE_DASHBOARD_ALLOW_INSECURE_HTTP=1
+    ports:
+      - "4040:4040"
+    volumes:
+      # Mount the config file created in Step 1
+      - ./dashboard-config.json:/src/Parse-Dashboard/parse-dashboard-config.json
+    networks:
+      - nutrisniff-network
+
+networks:
+  nutrisniff-network:
+    driver: bridge
 
 volumes:
-  mongodb-data:
+  mongodb_data:
